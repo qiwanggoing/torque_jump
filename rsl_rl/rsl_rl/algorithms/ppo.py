@@ -31,6 +31,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 
 from rsl_rl.modules import ActorCritic
 from rsl_rl.storage import RolloutStorage
@@ -52,6 +53,11 @@ class PPO:
                  schedule="fixed",
                  desired_kl=0.01,
                  device='cpu',
+                 sym_loss = False,
+                 obs_permutation = None,
+                 act_permutation = None,
+                 frame_stack = 1, # Default to 1 if not used
+                 sym_coef = 1.0,
                  ):
 
         self.device = device
@@ -77,6 +83,52 @@ class PPO:
         self.lam = lam
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+
+        # Symmetry Loss Setup
+        self.sym_loss = sym_loss
+        self.sym_coef = sym_coef
+        if self.sym_loss:
+            # Initialize action permutation matrix
+            self.act_perm_mat = torch.zeros((len(act_permutation), len(act_permutation)), device=self.device)
+            for i, perm in enumerate(act_permutation):
+                self.act_perm_mat[int(abs(perm))][i] = np.sign(perm) 
+            
+            # Initialize observation permutation matrix (with frame stacking support)
+            obs_permutation_stack = []
+            # Note: obs_permutation list indices are 0-based.
+            # Handle frame stacking if frame_stack > 1
+            for i in range(frame_stack):
+                for p in obs_permutation:
+                    # Adjust index based on frame number
+                    # sign(p) * (abs(p) + i * len(obs_permutation))
+                    # careful with 0 index which has no sign in python int, but list elements are likely non-zero or specific
+                    # In my_go2_jump config, index 0 is -0.0001 to carry sign.
+                    # Here we assume user config handles 0 correctly (e.g. using small float or careful ordering)
+                    # But wait, SATA config we just wrote used integers: 0, -1, 2. 
+                    # np.sign(0) is 0. This will kill the value!
+                    # We need to handle 0 explicitly or ensure config uses floats or 1-based indexing?
+                    # Let's check my_go2_jump config again: 
+                    # obs_permutation = [-0.0001, -1, 2...]
+                    # It uses -0.0001 to represent -0. 
+                    # Our SATA config uses 0. If we use 0, sign is 0. 
+                    # FIX: We must update the loop logic to handle 0 properly or rely on the user config.
+                    # Since we wrote the config with '0', we need logic: if p==0, assume positive unless specified?
+                    # Actually, for 0, we can't carry sign in an integer.
+                    # Let's assume positive 0. If negative 0 needed, user should have passed float.
+                    sign = np.sign(p) if p != 0 else 1.0
+                    if p == -0.0: # Check for negative zero float? hard.
+                         pass
+                    
+                    val = sign * (abs(p) + i * len(obs_permutation))
+                    obs_permutation_stack.append(val)
+
+            self.obs_perm_mat = torch.zeros((len(obs_permutation_stack), len(obs_permutation_stack)), device=self.device)
+            for i, perm in enumerate(obs_permutation_stack):
+                idx = int(abs(perm))
+                if idx < len(obs_permutation_stack):
+                    self.obs_perm_mat[idx][i] = np.sign(perm) if perm != 0 else 1.0
+                else:
+                    print(f"Warning: Permutation index {idx} out of bounds for obs dim {len(obs_permutation_stack)}")
 
     def init_storage(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape):
         self.storage = RolloutStorage(num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape, self.device)
@@ -135,6 +187,14 @@ class PPO:
                 sigma_batch = self.actor_critic.action_std
                 entropy_batch = self.actor_critic.entropy
 
+                #sym loss
+                sym_loss = 0 
+                if self.sym_loss:
+                    mirror_obs = torch.matmul(obs_batch, self.obs_perm_mat)#对称的观察
+                    mirror_act = self.actor_critic.actor(mirror_obs)#对称的观察的输出的对陈的动作
+                    m_mirror_act = torch.matmul(mirror_act, self.act_perm_mat)#将对称的观察的动作映射到原动作空间
+                    sym_loss = (mu_batch - m_mirror_act).pow(2).mean()
+
                 # KL
                 if self.desired_kl != None and self.schedule == 'adaptive':
                     with torch.inference_mode():
@@ -168,7 +228,7 @@ class PPO:
                 else:
                     value_loss = (returns_batch - value_batch).pow(2).mean()
 
-                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+                loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean() + self.sym_coef * sym_loss
 
                 # Gradient step
                 self.optimizer.zero_grad()
