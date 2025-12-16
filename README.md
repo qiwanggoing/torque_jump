@@ -1,129 +1,50 @@
-# SATA
+# Torque Jump Experiment (Based on SATA)
 
-Official Implementation for **[SATA: Safe and Adaptive Torque-Based Locomotion Policies Inspired by Animal Learning](https://arxiv.org/abs/2502.12674)**
-
-Accepted at **Robotics: Science and Systems (RSS) 2025**
-
-LI Peizhuo*. LI Hongyi*, Ge SUN, [Jin CHENG](https://jin-cheng.me), Xinrong YANG, Guillaume BELLEGARDA, Milad SHAFIEE, [Yuhong CAO](https://www.yuhongcao.online), Auke IJSPEERT, [Guillaume SARTORETTI](https://cde.nus.edu.sg/me/staff/sartoretti-guillaume-a/)
-
-<p align="center">
-  <img src="sata_overview.png" width="100%" />
-</p>
+> Built upon the [SATA Framework](https://arxiv.org/abs/2502.12674), this project implements a high-performance **Residual Torque Control** policy for vertical jumping on the Unitree Go2.
 
 ---
 
-## 🚀 Project Status (Updated Dec 16, 2025)
+## 🎯 Objective
 
-**Current Focus:** Implementing a robust **Torque-Based Jumping Policy** (`go2_jump_torque_min`) within the SATA framework.
-
-**Recent Achievements:**
-*   Successfully trained a stable vertical jumping policy using pure torque control (Residual P-Control).
-*   Resolved instability issues (flipping, erratic leg movements) by refining the reward function:
-    *   **Strict Termination:** Heavily penalized falling/crashing (`-200.0`), forcing the agent to prioritize safe landing.
-    *   **Posture Control:** Introduced strict L1 penalties for hip joint deviation to maintain a "legs-open" stance, and boosted orientation rewards (`20.0`) to keep the robot upright.
-    *   **Pure Torque Logic:** Cleaned up the environment (`go2_jump_min_env.py`) to remove experimental Position Control logic, ensuring a pure and focused Torque Control pipeline.
+To train a robust, explosive vertical jumping policy using pure torque control, demonstrating the superiority of **force-based feedback** over traditional position control for dynamic aerial maneuvers.
 
 ---
 
-## 🧭 Overview
+## 💡 Key Implementation Concepts
 
-**SATA** is a torque-based reinforcement learning framework inspired by how animals progressively acquire locomotion capabilities.  
-It introduces a biologically motivated **growth curriculum** that schedules torque limits and control frequency to evolve safely during training.
+### 1. Observation Space: The Power of Torque Feedback
+Instead of relying solely on joint positions and velocities, our policy explicitly observes the **Applied Torques** (62-dim observation vector).
+*   **Why?** In a residual control setup, knowing the exact torque currently being applied allows the network to "feel" the ground reaction forces and the robot's internal stress.
+*   This is critical for learning compliant landings and precise takeoff timing, which position-based observations often miss due to stiffness.
+
+### 2. Minimalist & Strict Reward Structure
+We moved away from complex, feature-engineered reward functions (which often lead to local minima like "kneeling" or "shaking"). Instead, we use a **"Constraint-Based" Minimalist approach**:
+
+*   **Survival is Priority #1**:
+    *   Massive penalties for crashing (`Termination = -200`).
+    *   Strict enforcement of upright posture (`Orientation Reward`).
+    *   Any contact with non-foot body parts forces an immediate reset.
+*   **Simple Drive**:
+    *   A single, clean signal for vertical velocity drives the jump.
+    *   No complex "phase matching" or "foot trajectory" shaping—we let the physics engine and the torque controller discover the optimal gait naturally.
 
 ---
 
-## Training in Simulation
+## 🚀 Usage
 
-### Pipeline to Install and Train ABS
-
-**Note**: Before running our code, it's highly recommended to first play with [RSL's Legged Gym version](https://github.com/leggedrobotics/legged_gym) to get a basic understanding of the Isaac-LeggedGym-RslRL framework.
-   <!-- <br/><br/> -->
-
-1. Create environment and install torch
-
-   ```text
-   conda create -n xxx python=3.8  # or use virtual environment/docker
-   
-   pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116  
-   # used version during this work: torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
-   # for older cuda ver:
-   pip3 install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
-   ```
-
-   
-
-2. Install Isaac Gym preview 4 release https://developer.nvidia.com/isaac-gym
-
-   unzip files to a folder, then install with pip:
-
-   `cd isaacgym/python && pip install -e .`
-
-   check it is correctly installed by playing: 
-
-   ```cmd
-   cd examples && python 1080_balls_of_solitude.py
-   ```
-
-   
-
-3. Clone this codebase and install our `rsl_rl`
-
-   ```cmd
-   pip install -e rsl_rl
-   ```
-
-
-
-4. Install our `legged_gym`
-
-   ```cmd
-   pip install -e legged_gym
-   ```
-
-   Ensure you have installed the following packages:
-    + pip install numpy==1.21 (must < 1.24, >1.20)
-    + pip install tensorboard
-    + pip install setuptools==59.5.0
-    + pip install wandb
-    
-5. Try training.
-
-   can use "--headless" to disable gui, press "v" to pause/resume gui play.
-
-   **For our latest Torque Jump experiment:**
-   ```text
-   python scripts/train.py --task=go2_jump_torque_min --headless
-   ```
-
-   for original go2 torque:
-    ```text
-   python scripts/train.py --task=go2_torque
-   ```
-6. Play the trained policy
-
-   ```cmd
-   python scripts/play.py --task=go2_jump_torque_min
-   ```
-## Troubleshooting:
-### Contact
-+ Corresponding author: CAO Yuhong: caoyuhong@nus.edu.sg
-+ Deployment: LI Peizhuo: lipeizhuo@u.nus.edu 
-+ Policy Learning in Sim: LI Hongyi: hongyi.li@u.nus.edu
-
-
-### Issues
-You can create an issue if you meet any bugs, except:
-+ If you cannot run the [vanilla RSL's Legged Gym](https://github.com/leggedrobotics/legged_gym), it is expected that you first go to the vanilla Legged Gym repo for help.
-+ There can be CUDA-related errors when there are too many parallel environments on certain PC+GPU+driver combination: we cannot solve thiss, you can try to reduce num_envs.
-+ Our codebase is only for our hardware system showcased above. We are happy to make it serve as a reference for the community, but we won't tune it for your own robots.
-
-## Credit
-If our work does help you, please consider citing us and the following works:
-```bibtex
-@article{li2025sata,
-  title={SATA: Safe and Adaptive Torque-Based Locomotion Policies Inspired by Animal Learning},
-  author={Li, Peizhuo and Li, Hongyi and Sun, Ge and Cheng, Jin and Yang, Xinrong and Bellegarda, Guillaume and Shafiee, Milad and Cao, Yuhong and Ijspeert, Auke and Sartoretti, Guillaume},
-  journal={arXiv preprint arXiv:2502.12674},
-  year={2025}
-}
+**Train:**
+```bash
+python scripts/train.py --task=go2_jump_torque_min --headless
 ```
+
+**Visualize:**
+```bash
+python scripts/play.py --task=go2_jump_torque_min
+```
+
+---
+
+## 📊 Status (Dec 16, 2025)
+*   **Experiment Focus**: Pure Torque Control (Position Control comparison experiments have been deprecated).
+*   **Current Performance**: Stable vertical jumping with safe, compliant landings.
+*   **Codebase**: Cleaned and refactored to remove legacy dependencies and ensure a pure torque learning pipeline.
