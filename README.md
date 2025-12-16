@@ -12,6 +12,19 @@ LI Peizhuo*. LI Hongyi*, Ge SUN, [Jin CHENG](https://jin-cheng.me), Xinrong YANG
 
 ---
 
+## 🚀 Project Status (Updated Dec 16, 2025)
+
+**Current Focus:** Implementing a robust **Torque-Based Jumping Policy** (`go2_jump_torque_min`) within the SATA framework.
+
+**Recent Achievements:**
+*   Successfully trained a stable vertical jumping policy using pure torque control (Residual P-Control).
+*   Resolved instability issues (flipping, erratic leg movements) by refining the reward function:
+    *   **Strict Termination:** Heavily penalized falling/crashing (`-200.0`), forcing the agent to prioritize safe landing.
+    *   **Posture Control:** Introduced strict L1 penalties for hip joint deviation to maintain a "legs-open" stance, and boosted orientation rewards (`20.0`) to keep the robot upright.
+    *   **Pure Torque Logic:** Cleaned up the environment (`go2_jump_min_env.py`) to remove experimental Position Control logic, ensuring a pure and focused Torque Control pipeline.
+
+---
+
 ## 🧭 Overview
 
 **SATA** is a torque-based reinforcement learning framework inspired by how animals progressively acquire locomotion capabilities.  
@@ -77,14 +90,19 @@ It introduces a biologically motivated **growth curriculum** that schedules torq
 
    can use "--headless" to disable gui, press "v" to pause/resume gui play.
 
-   for go2, in `SATA/legged_gym/legged_gym/envs/go2/go2_torque`,
+   **For our latest Torque Jump experiment:**
+   ```text
+   python scripts/train.py --task=go2_jump_torque_min --headless
+   ```
+
+   for original go2 torque:
     ```text
    python scripts/train.py --task=go2_torque
    ```
 6. Play the trained policy
 
    ```cmd
-   python scripts/play.py --task=go2_torque
+   python scripts/play.py --task=go2_jump_torque_min
    ```
 ## Troubleshooting:
 ### Contact
@@ -109,4 +127,3 @@ If our work does help you, please consider citing us and the following works:
   year={2025}
 }
 ```
-
