@@ -40,6 +40,8 @@ from .go2.go2_jump.go2_jump_env import GO2JumpEnv
 
 from legged_gym.envs.go2.go2_jump_min_experiments.go2_jump_min_env import GO2JumpMinEnv
 from legged_gym.envs.go2.go2_jump_min_experiments.go2_jump_torque_min_config import GO2JumpTorqueMinCfg, GO2JumpTorqueMinCfgPPO
+from legged_gym.envs.go2.go2_jump_control.go2_jump_control_config import GO2JumpControlCfg, GO2JumpControlCfgPPO
+from legged_gym.envs.go2.go2_jump_control.go2_jump_control_env import GO2JumpControlEnv
 
 import os
 
@@ -50,5 +52,6 @@ task_registry.register("go2_torque", GO2Torque, GO2TorqueCfg(), GO2TorqueCfgPPO(
 task_registry.register("go2_rough", LeggedRobot, GO2RoughCfg(), GO2RoughCfgPPO())
 task_registry.register("go2_jump", GO2JumpEnv, GO2JumpCfg(), GO2JumpCfgPPO())
 task_registry.register("go2_jump_torque_min", GO2JumpMinEnv, GO2JumpTorqueMinCfg(), GO2JumpTorqueMinCfgPPO())
+task_registry.register("go2_jump_control", GO2JumpControlEnv, GO2JumpControlCfg(), GO2JumpControlCfgPPO())
 
 
