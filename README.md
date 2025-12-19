@@ -28,6 +28,42 @@ We moved away from complex, feature-engineered reward functions (which often lea
     *   A single, clean signal for vertical velocity drives the jump.
     *   No complex "phase matching" or "foot trajectory" shaping—we let the physics engine and the torque controller discover the optimal gait naturally.
 
+### 3. Advanced Jump Control Experiments
+
+#### A. Directional & Frequency Control (`go2_jump_control`)
+This environment extends the base torque jumping policy to allow explicit control over:
+*   **Direction**: `lin_vel_x` (forward/backward) and `lin_vel_y` (left/right).
+*   **Jump Frequency**: `commands[3]` controls the jump frequency (Hz).
+    *   `freq > 0.1`: Robot jumps at the specified frequency.
+    *   `freq < 0.1`: Robot stands still.
+
+**Train:**
+```bash
+python legged_gym/scripts/train.py --task go2_jump_control
+```
+
+#### B. Single-Shot Trigger Jump (`go2_trigger_jump`) [WIP]
+An experimental environment designed for precise, "one-shot" jumping control via a trigger signal.
+*   **Command Structure**:
+    *   `commands[0-2]`: Directional Velocity (x, y, yaw).
+    *   `commands[3]`: **Trigger Signal** (0 or 1).
+*   **Behavior**:
+    *   **Standby**: When Trigger is 0, the robot maintains a stable standing posture.
+    *   **Fire**: When Trigger becomes 1, the robot executes **exactly one** full jump cycle.
+    *   **Atomic Action**: Once a jump starts, it will complete the full cycle even if the trigger is released mid-air.
+*   **Status**: Basic logic implemented. Training stability for the "short pulse" scenario is still being tuned. The robot can jump but may require further reward tuning for perfect single-jump consistency.
+
+**Train:**
+```bash
+python legged_gym/scripts/train.py --task go2_trigger_jump
+```
+
+**Play (Verification):**
+```bash
+python legged_gym/scripts/play_trigger_jump.py
+```
+This script automatically verifies the single-jump behavior by sending short trigger pulses every few seconds.
+
 ---
 
 ## 🚀 Usage
