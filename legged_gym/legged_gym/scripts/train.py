@@ -29,6 +29,8 @@
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
 import numpy as np
+# Fix for "AttributeError: module 'numpy' has no attribute 'float'" in Isaac Gym
+np.float = float
 import os
 from datetime import datetime
 

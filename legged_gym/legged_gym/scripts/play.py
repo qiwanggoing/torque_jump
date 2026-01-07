@@ -31,6 +31,9 @@
 from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
 
+import numpy as np
+# Fix for "AttributeError: module 'numpy' has no attribute 'float'" in Isaac Gym
+np.float = float
 import isaacgym
 from legged_gym.envs import *
 from legged_gym.utils import get_args, export_policy_as_jit, task_registry, Logger
